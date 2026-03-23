@@ -1,0 +1,18 @@
+[project]
+name = "oref-tui"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = [
+    "textual>=8.0.0,<9.0.0",
+    "httpx>=0.28.0,<1.0.0",
+]
+
+[dependency-groups]
+fast = ["orjson>=3.11.7"]
+dev = [
+    "textual-dev>=1.0.0",
+    "mcp>=1.0.0",
+]
+
+[tool.uv]
+default-groups = ["fast"]
