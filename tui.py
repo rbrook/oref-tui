@@ -1127,7 +1127,7 @@ class FeedDetailScreen(Screen):
         s = self._card.get("s", 0)
         try:
             async with httpx.AsyncClient(timeout=3) as client:
-                resp = await client.get(f"{self._host}/api/card-areas", params={"t": t, "s": str(s)})
+                resp = await client.get(f"{self._host}/api/card-areas", params={"h": self._card.get("h", "")})
             data = resp.json()
             hex_ids = data if isinstance(data, list) else data.get("areas", [])
             area_map = self._codemap.get("areas", {})
