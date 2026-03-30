@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import atexit
 import asyncio
+from importlib.metadata import version as _pkg_version, PackageNotFoundError
 from collections import deque
 import io
 import json as _json_stdlib
@@ -55,7 +56,10 @@ def _json_dumps_pretty(obj) -> bytes:
 # Constants
 # ---------------------------------------------------------------------------
 
-VERSION = "0.1.0"
+try:
+    VERSION = _pkg_version("oref-tui")
+except PackageNotFoundError:
+    VERSION = "dev"
 GITHUB_REPO = "rbrook/oref-tui"
 
 AOI_CONFIG = Path.home() / ".config" / "oref-tui" / "aoi.json"
@@ -1472,6 +1476,11 @@ class App(TextualApp):
                 self.call_from_thread(self._on_ping)
             except Exception:
                 pass
+        elif event_type == "reload":
+            try:
+                self.call_from_thread(self._on_reload)
+            except Exception:
+                logger.exception("Error handling reload event")
 
     def on_snapshot_received(self, msg: SnapshotReceived):
         try:
@@ -1538,6 +1547,14 @@ class App(TextualApp):
         """Called directly from SSE thread via call_from_thread."""
         self._update_connection_ui()
         self.query_one("#live-badge", LiveBadge).pulse()
+
+    def _on_reload(self):
+        """Called directly from SSE thread via call_from_thread."""
+        try:
+            header = self.query_one(HeaderBar)
+            header.run_worker(header._check_version(), exclusive=False)
+        except Exception:
+            logger.exception("Error triggering upgrade check from reload")
 
     def _update_connection_ui(self):
         """Update badge and header based on current connection state."""
