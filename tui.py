@@ -463,22 +463,35 @@ class FeedCard(ListItem):
             if names:
                 yield Label(markup_escape(" · ".join(names)), classes="districts-label")
 
+    _SD_CODES = frozenset({"C", "Rs", "Us", "Is", "Ps"})
+
     def _build_header(self) -> Text:
         t = self.card.get("t", "?")
         label, color = TYPE_LABELS.get(t, (t, "grey"))
         n = self.card.get("n", 0)
         ts = self.card.get("s", 0)
-        ago, is_recent = relative_time(ts)
+        stopped = self.card.get("x", 0) == 1
+        is_sd = t in self._SD_CODES
+        ref_ts = self.card.get("e", ts) if stopped else ts
+        ago, is_recent = relative_time(ref_ts)
+        if stopped:
+            is_recent = False
         hhmm = time.strftime("%H:%M", time.localtime(ts))
+        if self.card.get("e"):
+            hhmm += " - " + time.strftime("%H:%M", time.localtime(self.card["e"]))
         header = Text()
         style = COLOR_STYLES[color] if color in COLOR_STYLES else Style(color="grey50")
         header.append("■  ", style)
-        header.append(f"{label} — {n} ישובים", style)
-        header.append(f"  {hhmm} ", Style(color="grey50"))
+        header.append(f"{label}", style)
+        if stopped and not is_sd:
+            header.append(" הסתיים", Style(color="grey50"))
+        header.append(f" — {n} ישובים", style)
         if is_recent:
-            ago_style = ALERT_BG_STYLES.get(color, Style(color="white", bgcolor="#444444", bold=True))
-            header.append(ago, ago_style)
+            hot_style = ALERT_BG_STYLES.get(color, Style(color="white", bgcolor="#444444", bold=True))
+            header.append(f"  {hhmm} ", hot_style)
+            header.append(ago, hot_style)
         else:
+            header.append(f"  {hhmm} ", Style(color="grey50"))
             header.append(ago, Style(color="grey50"))
         return header
 
@@ -569,8 +582,8 @@ class FeedWidget(ListView):
 
     def _render_cards(self):
         try:
-            cutoff = time.time() - 6 * 3600
-            visible = [c for c in self._cards if c.get("s", 0) >= cutoff][:30]
+            cutoff = time.time() - 86400
+            visible = [c for c in self._cards if c.get("s", 0) >= cutoff][:100]
             new_keys = [self._card_key(c) for c in visible]
             old_keys = [self._card_key(ch.card) for ch in self.children if isinstance(ch, FeedCard)]
             # Skip rebuild if card list is unchanged
